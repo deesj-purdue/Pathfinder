@@ -1,53 +1,40 @@
-import sys
 import time
+import sys
 import argparse
 
 #!/usr/bin/env python3
-# pin_test.py - simple Jetson Nano GPIO LED tester
-# Usage:
-#   sudo python3 pin_test.py PIN [--bcm] [--blink N] [--interval SEC] [--duration SEC]
-# Examples:
-#   sudo python3 pin_test.py 12           # set BOARD pin 12 HIGH for 5s then LOW
-#   sudo python3 pin_test.py 18 --bcm     # set BCM pin 18 HIGH for 5s then LOW
-#   sudo python3 pin_test.py 12 --blink 10 --interval 0.3
-
+# pin_test.py - Blink an LED on a Jetson Nano GPIO pin (1s on / 1s off)
+# Usage: python pin_test.py PIN [--mode BOARD|BCM]
 
 try:
     import Jetson.GPIO as GPIO
 except Exception as e:
-    print("Error importing Jetson.GPIO:", e)
-    print("On a Jetson Nano, install python3 -m pip install Jetson.GPIO and run with sudo.")
+    print("Failed to import Jetson.GPIO:", e, file=sys.stderr)
     sys.exit(1)
 
 def main():
-    p = argparse.ArgumentParser(description="Jetson Nano GPIO LED test")
-    p.add_argument("pin", type=int, help="GPIO pin number (BOARD or BCM depending on --bcm)")
-    p.add_argument("--bcm", action="store_true", help="use BCM numbering (default: BOARD)")
-    p.add_argument("--blink", type=int, default=0, help="number of blink cycles (on+off). If 0, just turn on for duration.")
-    p.add_argument("--interval", type=float, default=0.5, help="blink interval in seconds (default 0.5)")
-    p.add_argument("--duration", type=float, default=5.0, help="how long to keep LED on if not blinking (seconds)")
+    p = argparse.ArgumentParser(description="Blink an LED on a Jetson Nano GPIO pin (1s on/off).")
+    p.add_argument("pin", type=int, help="GPIO pin number (BOARD or BCM based on --mode).")
+    p.add_argument("--mode", choices=("BOARD", "BCM"), default="BOARD", help="Pin numbering mode (default: BOARD).")
     args = p.parse_args()
 
-    mode = GPIO.BCM if args.bcm else GPIO.BOARD
+    mode = GPIO.BOARD if args.mode == "BOARD" else GPIO.BCM
     GPIO.setmode(mode)
-    GPIO.setwarnings(False)
     pin = args.pin
 
+    GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
+
     try:
-        GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
-        if args.blink > 0:
-            for i in range(args.blink):
-                GPIO.output(pin, GPIO.HIGH)
-                time.sleep(args.interval)
-                GPIO.output(pin, GPIO.LOW)
-                time.sleep(args.interval)
-        else:
+        print(f"Blinking pin {pin} ({args.mode}) — Ctrl+C to stop")
+        while True:
             GPIO.output(pin, GPIO.HIGH)
-            time.sleep(args.duration)
+            print("LED ON")
+            time.sleep(1.0)
             GPIO.output(pin, GPIO.LOW)
-        print("Done. Cleaning up GPIO.")
+            print("LED OFF")
+            time.sleep(1.0)
     except KeyboardInterrupt:
-        print("Interrupted by user. Cleaning up GPIO.")
+        print("\nStopping.")
     finally:
         GPIO.cleanup()
 
