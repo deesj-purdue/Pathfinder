@@ -22,7 +22,9 @@ Dependencies:
 
 
 class Camera:
-    def __init__(self, device=None, width=1920, height=1080, fps=30, backend=cv2.CAP_V4L2):
+    def __init__(
+        self, device=None, width=1920, height=1080, fps=30, backend=cv2.CAP_V4L2
+    ):
         # device: integer index or path like "/dev/video0". If None, auto-find first working device.
         self.device = device
         self.width = width
@@ -40,38 +42,69 @@ class Camera:
             self.device = self._auto_find_device()
 
     def _auto_find_device(self):
-        for dev in sorted(glob.glob('/dev/video*')):
-            idx = int(dev.replace('/dev/video', ''))
+        for dev in sorted(glob.glob("/dev/video*")):
+            idx = int(dev.replace("/dev/video", ""))
             cap = cv2.VideoCapture(idx, self.backend)
             if cap.isOpened():
                 cap.release()
                 return dev
         # fallback to index 0
+        print("[Warning] No /dev/video* device found. Falling back to index 0.")
         return 0
 
     def open(self):
-        if isinstance(self.device, str) and self.device.startswith('/dev/video'):
-            # open by numeric index extracted from device path
-            idx = int(self.device.replace('/dev/video', ''))
-            self._cap = cv2.VideoCapture(idx, self.backend)
+        if self.device is None:
+            raise ValueError(
+                "[Error] Device is not set. Please provide a valid device index or path."
+            )
+
+        if isinstance(self.device, str) and self.device.startswith("/dev/video"):
+            try:
+                idx = int(self.device.replace("/dev/video", ""))
+                self._cap = cv2.VideoCapture(idx, self.backend)
+            except ValueError:
+                raise ValueError(f"[Error] Invalid device path: {self.device}")
+        elif isinstance(self.device, int):
+            self._cap = cv2.VideoCapture(self.device, self.backend)
         else:
-            self._cap = cv2.VideoCapture(int(self.device), self.backend)
+            raise TypeError(
+                f"[Error] Unsupported device type: {type(self.device)}. Must be int or str."
+            )
 
         if not self._cap or not self._cap.isOpened():
-            raise RuntimeError(f"Failed to open camera {self.device}")
+            # Fallback to default backend if CAP_V4L2 fails
+            print(
+                f"[Error] Failed to open camera {self.device} with backend {self.backend}. Retrying with default backend."
+            )
+            self._cap = (
+                cv2.VideoCapture(self.device) if isinstance(self.device, int) else None
+            )
+
+        if not self._cap or not self._cap.isOpened():
+            raise RuntimeError(
+                f"[Critical] Failed to open camera {self.device} after fallback."
+            )
 
         # try to set properties
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(self.width))
-        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self.height))
-        self._cap.set(cv2.CAP_PROP_FPS, float(self.fps))
+        if self._cap:
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(self.width))
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self.height))
+            self._cap.set(cv2.CAP_PROP_FPS, float(self.fps))
 
         # warm up
         time.sleep(0.1)
         # grab one frame
-        ret, frame = self._cap.read()
-        if ret:
-            self.frame = frame
-            self.timestamp = time.time()
+        if self._cap and self._cap.isOpened():
+            ret, frame = self._cap.read()
+            if ret:
+                self.frame = frame
+                self.timestamp = time.time()
+            else:
+                print("[Warning] Camera opened but failed to grab initial frame.")
+        else:
+            print(
+                "[Error] Camera capture object is None or not opened. Cannot read frame."
+            )
 
     def start(self):
         if self._running:
@@ -110,14 +143,18 @@ class Camera:
 
     # Basic property controls. Some cameras ignore cv2 settings; v4l2-ctl fallback tries to set using device controls.
     def set_property(self, prop, value):
-        # prop is one of 'exposure', 'gain', 'brightness', 'contrast', 'white_balance_temperature'
+        if not self._cap:
+            print("[Error] Camera is not initialized. Cannot set property.")
+            return False
+
         cv_props = {
-            'exposure': cv2.CAP_PROP_EXPOSURE,
-            'gain': cv2.CAP_PROP_GAIN,
-            'brightness': cv2.CAP_PROP_BRIGHTNESS,
-            'contrast': cv2.CAP_PROP_CONTRAST,
-            'white_balance_temperature': cv2.CAP_PROP_WHITE_BALANCE_BLUE_U  # not always consistent
+            "exposure": cv2.CAP_PROP_EXPOSURE,
+            "gain": cv2.CAP_PROP_GAIN,
+            "brightness": cv2.CAP_PROP_BRIGHTNESS,
+            "contrast": cv2.CAP_PROP_CONTRAST,
+            "white_balance_temperature": cv2.CAP_PROP_WHITE_BALANCE_BLUE_U,
         }
+
         if prop in cv_props:
             try:
                 ok = self._cap.set(cv_props[prop], float(value))
@@ -127,39 +164,53 @@ class Camera:
                 pass
         # fallback to v4l2-ctl if available and device path is known
         dev_path = self._resolve_dev_path()
-        if dev_path and shutil_which('v4l2-ctl'):
+        if dev_path and shutil_which("v4l2-ctl"):
             ctrl_map = {
-                'exposure': 'exposure_absolute',
-                'gain': 'gain',
-                'brightness': 'brightness',
-                'contrast': 'contrast',
-                'white_balance_temperature': 'white_balance_temperature'
+                "exposure": "exposure_absolute",
+                "gain": "gain",
+                "brightness": "brightness",
+                "contrast": "contrast",
+                "white_balance_temperature": "white_balance_temperature",
             }
             if prop in ctrl_map:
-                cmd = ['v4l2-ctl', '-d', dev_path, '--set-ctrl', f"{ctrl_map[prop]}={int(value)}"]
+                cmd = [
+                    "v4l2-ctl",
+                    "-d",
+                    dev_path,
+                    "--set-ctrl",
+                    f"{ctrl_map[prop]}={int(value)}",
+                ]
                 try:
-                    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.check_call(
+                        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
                     return True
                 except subprocess.CalledProcessError:
                     return False
         return False
 
     def _resolve_dev_path(self):
-        if isinstance(self.device, str) and self.device.startswith('/dev/video'):
+        if self.device is None:
+            print("[Error] Device is not set. Cannot resolve device path.")
+            return None
+
+        if isinstance(self.device, str) and self.device.startswith("/dev/video"):
             return self.device
         # try to find index -> path
         try:
-            idx = int(self.device)
-            path = f"/dev/video{idx}"
-            if os.path.exists(path):
-                return path
-        except Exception:
-            pass
+            if isinstance(self.device, int):
+                path = f"/dev/video{self.device}"
+                if os.path.exists(path):
+                    return path
+        except Exception as e:
+            print(f"[Error] Failed to resolve device path: {e}")
         return None
+
 
 def shutil_which(name):
     # local copy to avoid importing shutil at top-level if not needed
     return which(name)
+
 
 if __name__ == "__main__":
     # Simple CLI: preview and save a frame when pressing 's'
@@ -180,11 +231,11 @@ if __name__ == "__main__":
                 display = cv2.resize(frame, (int(w * scale), int(h * scale)))
             cv2.imshow("Camera Preview", display)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('s'):
+            if key == ord("s"):
                 fname = f"frame_{int(time.time())}.jpg"
                 cv2.imwrite(fname, frame)
                 print("Saved", fname)
-            elif key == ord('q'):
+            elif key == ord("q"):
                 break
     finally:
         cam.release()
