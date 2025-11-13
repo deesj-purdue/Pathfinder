@@ -1,0 +1,5 @@
+run_id,preset,device,yolo_model,midas_model,input_w,input_h,frame,t_rgb,t_midas_prep,t_midas_infer,t_depth_post,t_yolo_infer,t_overlay,t_total,objects,save_path,err,capture_ts,proc_ts
+balanced_2025-11-07T19-06-44,balanced,cpu,yolov5s,DPT_Hybrid,480,270,1,0.0,0.014,1.313,0.119,0.115,0.024,1.595,1,C:\Users\neals\OneDrive\Desktop\Projects\Pathfinder\outputs\fusion_overlay_1_balanced.png,,1.699,3.752
+balanced_2025-11-07T19-06-44,balanced,cpu,yolov5s,DPT_Hybrid,480,270,2,0.0,0.009,0.807,0.117,0.12,0.025,1.08,1,C:\Users\neals\OneDrive\Desktop\Projects\Pathfinder\outputs\fusion_overlay_2_balanced.png,,2.703,4.873
+balanced_2025-11-07T19-06-44,balanced,cpu,yolov5s,DPT_Hybrid,480,270,3,0.0,0.008,0.97,0.125,0.156,0.033,1.294,1,C:\Users\neals\OneDrive\Desktop\Projects\Pathfinder\outputs\fusion_overlay_3_balanced.png,,3.739,6.203
+balanced_2025-11-07T19-06-44,balanced,cpu,yolov5s,DPT_Hybrid,480,270,4,0.0,0.013,0.917,0.127,0.109,0.029,1.195,1,C:\Users\neals\OneDrive\Desktop\Projects\Pathfinder\outputs\fusion_overlay_4_balanced.png,,4.744,7.434

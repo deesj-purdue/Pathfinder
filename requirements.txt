@@ -1,1 +1,15 @@
+torch
+torchvision
+opencv-python
+numpy
+Pillow
 pyserial
+pyyaml
+requests
+scipy
+matplotlib
+tensorboard
+
+# Install yolov5 and MiDaS from local directories
+-e ./yolov5
+-e ./MiDaS
