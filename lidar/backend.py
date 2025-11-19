@@ -4,12 +4,11 @@ import time
 import logging
 from typing import Dict, Optional
 from lidar.rplidarc1.protocol import Request, Response, ResponseMode, RequestBytes
-from rich import print
 
 _scanner_thread: Optional[threading.Thread] = None
 _stop_event = threading.Event()
 _latest_lock = threading.Lock()
-_latest_reads: Dict[float, tuple[float, float]] = {}
+_latest_reads: {}
 _lidar: Optional[RPLidar] = None
 
 logger = logging.getLogger(__name__)
