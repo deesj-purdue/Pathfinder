@@ -4,8 +4,12 @@ import lidar.backend as backend
 import threading
 import time
 
-with open("lidar/_lidar.config", "r") as f:
-    LIDAR_PORT = f.read().strip()
+try:
+    with open("lidar/_lidar.config", "r") as f:
+        LIDAR_PORT = f.read().strip()
+except FileNotFoundError:
+    LIDAR_PORT = "/dev/ttyUSB0"
+
 LIDAR_BAUDRATE = 460800
 
 class LidarData:
