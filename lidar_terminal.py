@@ -9,7 +9,7 @@ def terminal_lidar():
     lidar.start()
     try:
         while True:
-            time.sleep(1)
+            time.sleep(0.2)
             data = lidar.read()
             for angle, (distance, quality) in data:
                 if distance is not None:

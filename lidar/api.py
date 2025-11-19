@@ -4,7 +4,7 @@ import lidar.backend as backend
 import threading
 import time
 
-with open("_lidar_config", "r") as f:
+with open("lidar/_lidar.config", "r") as f:
     LIDAR_PORT = f.read().strip()
 LIDAR_BAUDRATE = 460800
 
