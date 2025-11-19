@@ -4,7 +4,8 @@ import lidar.backend as backend
 import threading
 import time
 
-LIDAR_PORT = "COM5"
+with open("_lidar_config", "r") as f:
+    LIDAR_PORT = f.read().strip()
 LIDAR_BAUDRATE = 460800
 
 class LidarData:
@@ -24,6 +25,9 @@ class LidarData:
 
     def __getitem__(self, angle):
         return self.data[angle]
+    
+    def __len__(self):
+        return len(self.data)
 
     def keys(self):
         return self.data.keys()
