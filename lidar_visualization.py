@@ -12,14 +12,21 @@ def visualize_lidar():
     lidar.start()
     plt.ion()
     fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-    scatter = ax.scatter([], [], s=2, color='blue')
+    scatter = ax.scatter([], [], s=2, color="blue")
     ax.set_title("LIDAR Visualization")
 
     # Draw rings every 1 meter
     for r in range(1, 11):
-        ax.plot(np.linspace(0, 2*np.pi, 360), [r]*360, color='gray', lw=0.5, alpha=0.3, zorder=1)
-        ax.set_rticks(range(1, 11))
-        ax.set_rlabel_position(135)
+        ax.plot(
+            np.linspace(0, 2 * np.pi, 360),
+            [r] * 360,
+            color="gray",
+            lw=0.5,
+            alpha=0.3,
+            zorder=1,
+        )
+        # ax.set_rticks(range(1, 11))
+        # ax.set_rlabel_position(135)
 
     try:
         while True:
@@ -32,7 +39,7 @@ def visualize_lidar():
                     r.append(distance / 1000.0)
 
             scatter.set_offsets(np.c_[theta, r])
-            ax.set_title(f"LIDAR Polar Visualization ({len(r)} points)")
+            ax.set_title("LIDAR Polar Visualization ({} points)".format(len(r)))
             plt.draw()
             plt.pause(0.1)
     except KeyboardInterrupt:

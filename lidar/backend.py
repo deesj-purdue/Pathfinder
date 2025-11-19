@@ -15,7 +15,7 @@ _lidar: Optional[RPLidar] = None
 logger = logging.getLogger(__name__)
 
 
-def start_scanner(port: str, baud: int) -> None:
+def start_scanner(port: str, baud: int):
     global _scanner_thread, _stop_event, _lidar
     if _scanner_thread and _scanner_thread.is_alive():
         logger.debug("Scanner already running")
@@ -39,7 +39,7 @@ def start_scanner(port: str, baud: int) -> None:
     _scanner_thread.start()
 
 
-def stop_scanner(timeout: float = 5.0) -> None:
+def stop_scanner(timeout: float = 5.0):
     """Signal the scanner to stop and wait for thread to join."""
     global _scanner_thread, _stop_event, _lidar
     _stop_event.set()
@@ -55,11 +55,11 @@ def stop_scanner(timeout: float = 5.0) -> None:
         _lidar = None
 
 
-def is_running() -> bool:
+def is_running():
     return _scanner_thread is not None and _scanner_thread.is_alive()
 
 
-def get_latest_reads() -> Dict[float, tuple[float, float]]:
+def get_latest_reads():
     """Return a shallow copy of the latest readings (angle -> distance_mm)."""
     with _latest_lock:
         return dict(_latest_reads)
