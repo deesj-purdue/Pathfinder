@@ -59,6 +59,7 @@ class Lidar:
             if not self._running:
                 backend.start_scanner(self.port, self.baudrate)
                 self._running = True
+            
 
     def read(self) -> LidarData:
         """Get the most recent scan data as a LidarData object."""

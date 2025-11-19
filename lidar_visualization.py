@@ -1,7 +1,6 @@
 from lidar.api import Lidar
 import matplotlib.pyplot as plt
 import numpy as np
-import time
 
 
 def visualize_lidar():

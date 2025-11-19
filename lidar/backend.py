@@ -16,14 +16,24 @@ logger = logging.getLogger(__name__)
 
 
 def start_scanner(port: str, baud: int) -> None:
-    """Start background scanner thread (daemon). Safe to call multiple times."""
     global _scanner_thread, _stop_event, _lidar
     if _scanner_thread and _scanner_thread.is_alive():
         logger.debug("Scanner already running")
         return
 
     _stop_event.clear()
-    _lidar = RPLidar(port, baud)
+    last_error = ValueError("Failed to initialize RPLidar after multiple attempts")
+    for attempt in range(1):
+        try:
+            _lidar = RPLidar(port, baud)
+            break  # Success
+        except Exception as e:
+            last_error = e
+            logger.warning(f"RPLidar init failed (attempt {attempt+1}/10): {e}")
+            time.sleep(0.5)
+    else:
+        # All attempts failed
+        raise last_error
 
     _scanner_thread = threading.Thread(target=_scanner_worker, args=(), daemon=True)
     _scanner_thread.start()
