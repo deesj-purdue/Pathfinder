@@ -1,6 +1,5 @@
 from lidar.api import Lidar
-from rich import print
-
+import time
 
 def terminal_lidar():
     """
@@ -10,6 +9,7 @@ def terminal_lidar():
     lidar.start()
     try:
         while True:
+            time.sleep(1)
             data = lidar.read()
             for angle, (distance, quality) in data:
                 if distance is not None:

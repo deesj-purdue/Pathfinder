@@ -2,13 +2,13 @@ from lidar.rplidarc1.scanner import RPLidar
 import threading
 import time
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from lidar.rplidarc1.protocol import Request, Response, ResponseMode, RequestBytes
 
 _scanner_thread: Optional[threading.Thread] = None
 _stop_event = threading.Event()
 _latest_lock = threading.Lock()
-_latest_reads: {}
+_latest_reads: Dict[float, Tuple[Optional[float], int]] = {}
 _lidar: Optional[RPLidar] = None
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def start_scanner(port: str, baud: int):
 
     _stop_event.clear()
     last_error = ValueError("Failed to initialize RPLidar after multiple attempts")
-    for attempt in range(1):
+    for attempt in range(10):
         try:
             _lidar = RPLidar(port, baud)
             break  # Success
