@@ -1,2 +1,56 @@
+# Virtual environments
 .venv
-__pycache__
+.venv36
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Weights and models (keep in repo but not cache)
+*.pt
+*.pth
+*.onnx
+*.pb
+
+# Large output files
+outputs/
+*.csv
+*.log
+
+# Temporary files
+*.tmp
+.pytest_cache/
+.coverage
