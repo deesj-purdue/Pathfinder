@@ -12,5 +12,5 @@ Put this in the terminal to load my deploy key (read/write access to Pathfinder 
 
 ```bash
 eval "$(ssh-agent -s)"
-ssh-add ~/.ssh/pathfinder-deploy-key
+ssh-add ~/.ssh/pathfinder-raspberry-pi-deploy-key
 ```
