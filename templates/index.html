@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder Stream Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .video-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .video-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-pause {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-pause:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+        }
+        
+        .btn-pause:active {
+            transform: translateY(0);
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stats-card h3 {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            opacity: 0.9;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-item:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-card h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .info-card p {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .info-card ul {
+            margin-left: 20px;
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .info-card li {
+            margin-bottom: 5px;
+        }
+        
+        .legend {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .legend h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            flex-shrink: 0;
+        }
+        
+        .color-green {
+            background: linear-gradient(135deg, #00ff00 0%, #00aa00 100%);
+        }
+        
+        .color-yellow {
+            background: linear-gradient(135deg, #ffff00 0%, #ffaa00 100%);
+        }
+        
+        .color-red {
+            background: linear-gradient(135deg, #ff0000 0%, #aa0000 100%);
+        }
+        
+        .legend-text {
+            font-size: 0.95em;
+            color: #666;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4caf50;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '.';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% {
+                content: '';
+            }
+            40% {
+                content: '.';
+            }
+            60% {
+                content: '..';
+            }
+            80%, 100% {
+                content: '...';
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Pathfinder Stream Detection</h1>
+            <p>Real-time Object Detection with Depth Estimation</p>
+        </div>
+        
+        <div class="content">
+            <div class="video-section">
+                <div class="video-container">
+                    <img id="videoStream" src="/video_feed" alt="Video Stream" />
+                </div>
+                <div class="controls">
+                    <button class="btn-pause" onclick="togglePause()">⏸ Pause/Resume</button>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="stats-card">
+                    <h3>📊 Live Statistics</h3>
+                    <div class="stat-item">
+                        <span class="stat-label"><span class="status-indicator"></span>FPS</span>
+                        <span class="stat-value" id="fps">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Detections</span>
+                        <span class="stat-value" id="detections">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Depth Method</span>
+                        <span class="stat-value" id="depthMethod">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Uptime</span>
+                        <span class="stat-value" id="uptime">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Frames</span>
+                        <span class="stat-value" id="totalFrames">--</span>
+                    </div>
+                </div>
+                
+                <div class="legend">
+                    <h4>🌈 Depth Legend</h4>
+                    <div class="legend-item">
+                        <div class="legend-color color-green"></div>
+                        <span class="legend-text">Far (> 0.33)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color color-yellow"></div>
+                        <span class="legend-text">Medium (0.33 - 0.66)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color color-red"></div>
+                        <span class="legend-text">Close (< 0.66)</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h4>ℹ️ Information</h4>
+                    <p><strong>Model:</strong> YOLOv5n</p>
+                    <p><strong>Detection:</strong> Real-time Object Detection</p>
+                    <p><strong>Depth:</strong> MiDaS / Edge-based Estimation</p>
+                    <p>Objects are color-coded by their depth from the camera.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🚀 Pathfinder Stream Detection System | Refresh the page to reconnect if stream stalls</p>
+        </div>
+    </div>
+    
+    <script>
+        // Update statistics every 500ms
+        function updateStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('fps').textContent = Math.round(data.fps);
+                    document.getElementById('detections').textContent = data.detections;
+                    document.getElementById('depthMethod').textContent = data.depth_method;
+                    document.getElementById('uptime').textContent = formatTime(data.uptime);
+                    document.getElementById('totalFrames').textContent = data.total_frames;
+                })
+                .catch(error => console.error('Error fetching stats:', error));
+        }
+        
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        
+        function togglePause() {
+            fetch('/pause', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Paused:', data.paused);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        // Update stats every 500ms
+        setInterval(updateStats, 500);
+        updateStats(); // Initial update
+        
+        // Auto-refresh video stream if it disconnects
+        document.getElementById('videoStream').addEventListener('error', function() {
+            console.log('Stream disconnected, retrying...');
+            setTimeout(() => {
+                this.src = '/video_feed?' + new Date().getTime();
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
