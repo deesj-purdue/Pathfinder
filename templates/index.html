@@ -5,297 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pathfinder Stream Detection</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #0f4c81 0%, #1f6feb 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
         }
-        
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             width: 100%;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: #fdfefe;
+            border-radius: 12px;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.25);
             overflow: hidden;
         }
-        
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
+            background: linear-gradient(135deg, #0f4c81 0%, #1f6feb 100%);
+            color: #e9f2ff;
+            padding: 24px;
             text-align: center;
         }
-        
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-        
-        .content {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            padding: 30px;
-        }
-        
-        @media (max-width: 1200px) {
-            .content {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .video-section {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .video-container {
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-        
-        .video-container img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
+        .header h1 { font-size: 2.2em; font-weight: 700; letter-spacing: 0.02em; }
+        .header p { font-size: 1em; opacity: 0.85; }
+        .content { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; padding: 20px; }
+        @media (max-width: 1100px) { .content { grid-template-columns: 1fr; } }
+        .video-section { display: flex; flex-direction: column; gap: 12px; }
+        .video-container { background: #0b1a2a; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        .video-container img { width: 100%; display: block; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
         button {
             flex: 1;
-            min-width: 150px;
-            padding: 12px 20px;
+            min-width: 140px;
+            padding: 11px 18px;
             border: none;
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 0.95em;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            transition: all 0.2s ease;
+            color: #f8fbff;
         }
-        
-        .btn-pause {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-        
-        .btn-pause:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
-        }
-        
-        .btn-pause:active {
-            transform: translateY(0);
-        }
-        
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
+        .btn-pause { background: #1f6feb; }
+        .btn-pause:hover { background: #1b5bb5; transform: translateY(-1px); }
+        .btn-pause:active { transform: translateY(0); }
+        .sidebar { display: flex; flex-direction: column; gap: 16px; }
         .stats-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
+            background: #0f4c81;
+            color: #e9f2ff;
+            padding: 18px;
             border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.15);
         }
-        
-        .stats-card h3 {
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
-            opacity: 0.9;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 10px;
-        }
-        
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .stat-item:last-child {
-            margin-bottom: 0;
-            border-bottom: none;
-        }
-        
-        .stat-label {
-            font-size: 0.95em;
-            opacity: 0.9;
-        }
-        
-        .stat-value {
-            font-size: 1.3em;
-            font-weight: bold;
-        }
-        
-        .info-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .info-card h4 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-        }
-        
-        .info-card p {
-            color: #666;
-            font-size: 0.95em;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-        
-        .info-card ul {
-            margin-left: 20px;
-            color: #666;
-            font-size: 0.95em;
-        }
-        
-        .info-card li {
-            margin-bottom: 5px;
-        }
-        
-        .legend {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .legend h4 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.1em;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            gap: 10px;
-        }
-        
-        .legend-color {
-            width: 30px;
-            height: 30px;
-            border-radius: 5px;
-            flex-shrink: 0;
-        }
-        
-        .color-green {
-            background: linear-gradient(135deg, #00ff00 0%, #00aa00 100%);
-        }
-        
-        .color-yellow {
-            background: linear-gradient(135deg, #ffff00 0%, #ffaa00 100%);
-        }
-        
-        .color-red {
-            background: linear-gradient(135deg, #ff0000 0%, #aa0000 100%);
-        }
-        
-        .legend-text {
-            font-size: 0.95em;
-            color: #666;
-        }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4caf50;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-        }
-        
-        .footer {
-            background: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            color: #666;
-            font-size: 0.9em;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .loading::after {
-            content: '.';
-            animation: dots 1.5s steps(4, end) infinite;
-        }
-        
-        @keyframes dots {
-            0%, 20% {
-                content: '';
-            }
-            40% {
-                content: '.';
-            }
-            60% {
-                content: '..';
-            }
-            80%, 100% {
-                content: '...';
-            }
-        }
+        .stats-card h3 { font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; opacity: 0.9; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; }
+        .stat-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+        .stat-item:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+        .stat-label { font-size: 0.95em; opacity: 0.9; }
+        .stat-value { font-size: 1.2em; font-weight: 700; }
+        .legend { background: #f5f7fb; padding: 16px; border-radius: 10px; border-left: 4px solid #1f6feb; }
+        .legend h4 { color: #102542; margin-bottom: 12px; font-size: 1em; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
+        .legend-color { width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0; }
+        .color-green { background: linear-gradient(135deg, #00d26a 0%, #00a05c 100%); }
+        .color-yellow { background: linear-gradient(135deg, #ffd400 0%, #f0a400 100%); }
+        .color-red { background: linear-gradient(135deg, #ff4d4f 0%, #c62828 100%); }
+        .legend-text { font-size: 0.93em; color: #4a5568; }
+        .info-card { background: #f5f7fb; padding: 14px; border-radius: 10px; border-left: 4px solid #1f6feb; color: #102542; font-size: 0.95em; }
+        .info-card p { margin-bottom: 6px; }
+        .footer { background: #f5f7fb; padding: 14px; text-align: center; color: #4a5568; font-size: 0.9em; border-top: 1px solid #e2e8f0; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 Pathfinder Stream Detection</h1>
-            <p>Real-time Object Detection with Depth Estimation</p>
+            <h1>Pathfinder</h1>
+            <p>Real-time detection and depth</p>
         </div>
         
         <div class="content">
@@ -304,20 +91,28 @@
                     <img id="videoStream" src="/video_feed" alt="Video Stream" />
                 </div>
                 <div class="controls">
-                    <button class="btn-pause" onclick="togglePause()">⏸ Pause/Resume</button>
+                    <button class="btn-pause" onclick="togglePause()">Pause / Resume</button>
                 </div>
             </div>
             
             <div class="sidebar">
                 <div class="stats-card">
-                    <h3>📊 Live Statistics</h3>
+                    <h3>Live Statistics</h3>
                     <div class="stat-item">
-                        <span class="stat-label"><span class="status-indicator"></span>FPS</span>
-                        <span class="stat-value" id="fps">--</span>
+                        <span class="stat-label">Stream FPS</span>
+                        <span class="stat-value" id="streamFps">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Processed FPS</span>
+                        <span class="stat-value" id="processedFps">--</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Detections</span>
                         <span class="stat-value" id="detections">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Stable Detections</span>
+                        <span class="stat-value" id="stableDetections">--</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Depth Method</span>
@@ -327,17 +122,13 @@
                         <span class="stat-label">Uptime</span>
                         <span class="stat-value" id="uptime">--</span>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Total Frames</span>
-                        <span class="stat-value" id="totalFrames">--</span>
-                    </div>
                 </div>
                 
                 <div class="legend">
-                    <h4>🌈 Depth Legend</h4>
+                    <h4>Depth Legend</h4>
                     <div class="legend-item">
                         <div class="legend-color color-green"></div>
-                        <span class="legend-text">Far (> 0.33)</span>
+                        <span class="legend-text">Far (depth &lt; 0.33)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color color-yellow"></div>
@@ -345,22 +136,20 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color color-red"></div>
-                        <span class="legend-text">Close (< 0.66)</span>
+                        <span class="legend-text">Close (depth &gt; 0.66)</span>
                     </div>
                 </div>
                 
                 <div class="info-card">
-                    <h4>ℹ️ Information</h4>
-                    <p><strong>Model:</strong> YOLOv5n</p>
-                    <p><strong>Detection:</strong> Real-time Object Detection</p>
-                    <p><strong>Depth:</strong> MiDaS / Edge-based Estimation</p>
-                    <p>Objects are color-coded by their depth from the camera.</p>
+                    <p><strong>Model:</strong> YOLOv5s</p>
+                    <p><strong>Depth:</strong> MiDaS / Edge-based</p>
+                    <p>Color indicates relative depth.</p>
                 </div>
             </div>
         </div>
         
         <div class="footer">
-            <p>🚀 Pathfinder Stream Detection System | Refresh the page to reconnect if stream stalls</p>
+            <p>Pathfinder | Refresh to reconnect if the stream stalls</p>
         </div>
     </div>
     
@@ -370,14 +159,25 @@
             fetch('/stats')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('fps').textContent = Math.round(data.fps);
+                    document.getElementById('processedFps').textContent = Math.round(data.processed_fps || 0);
                     document.getElementById('detections').textContent = data.detections;
+                    document.getElementById('stableDetections').textContent = data.stable_detections || 0;
                     document.getElementById('depthMethod').textContent = data.depth_method;
                     document.getElementById('uptime').textContent = formatTime(data.uptime);
-                    document.getElementById('totalFrames').textContent = data.total_frames;
                 })
                 .catch(error => console.error('Error fetching stats:', error));
         }
+
+        // Measure client-side stream FPS (frames actually displayed)
+        let frameCounter = 0;
+        let clientFps = 0;
+        const videoEl = document.getElementById('videoStream');
+        videoEl.addEventListener('load', () => { frameCounter += 1; });
+        setInterval(() => {
+            clientFps = frameCounter;
+            frameCounter = 0;
+            document.getElementById('streamFps').textContent = clientFps;
+        }, 1000);
         
         function formatTime(seconds) {
             const hours = Math.floor(seconds / 3600);

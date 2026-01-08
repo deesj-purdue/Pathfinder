@@ -34,10 +34,18 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load YOLOv5 model
 sys.path.insert(0, str(root / "yolov5"))
-model_path = root / "yolov5n.pt"
+model_path = root / "yolov5s.pt"  # choose yolov5s for better accuracy on CPU while keeping speed reasonable
 print("Loading YOLOv5 model...")
 yolo = torch.hub.load(str(root / "yolov5"), 'custom', path=str(model_path), source='local')
 yolo.conf = 0.5  # Confidence threshold
+# Keep only navigation-relevant classes to reduce postprocessing cost
+ALLOWED_CLASSES = {
+    'person',
+    'bicycle', 'motorcycle', 'car', 'bus', 'truck',
+    'traffic light', 'stop sign', 'fire hydrant', 'parking meter',
+    'bench', 'chair', 'couch', 'potted plant',
+    'backpack', 'handbag', 'suitcase'
+}
 
 # Try to load MiDaS for depth estimation
 midas_available = False
@@ -90,6 +98,14 @@ try_load_midas()
 # Flask app
 app = Flask(__name__)
 
+# Processing configuration
+YOLO_EVERY_N_FRAMES = 1  # Run YOLO every frame (fast at 320)
+MIDAS_EVERY_N_FRAMES = 3  # Run MiDaS every Nth frame (expensive, cache between runs)
+DETECTION_PERSISTENCE_THRESHOLD = 2  # Require detection in N consecutive processed frames before alerting
+INFERENCE_SIZE = 320  # YOLO inference resolution (320 is fastest, still accurate for navigation)
+TEMPORAL_DEPTH_SMOOTHING = 0.3  # Blend factor for temporal depth smoothing (lower = more responsive)
+USE_MIDAS = True  # Set True for accurate MiDaS depth (runs less frequently)
+
 # Global state
 processing_lock = Lock()
 frame_queue = Queue(maxsize=1)
@@ -98,14 +114,23 @@ is_paused = False
 fps_counter = 0
 fps_time = time.time()
 frame_count = 0
+processed_frame_count = 0  # Frames actually processed by YOLO+MiDaS
 current_stats = {
     'fps': 0,
+    'processed_fps': 0,
     'detections': 0,
-    'depth_method': 'MiDaS' if midas_available else 'Edge-based',
+    'stable_detections': 0,
+    'depth_method': 'MiDaS (cached)' if (midas_available and USE_MIDAS) else 'Edge-based',
     'total_frames': 0,
     'uptime': 0
 }
 start_time = time.time()
+
+# Detection persistence tracking: {label+box_hash: consecutive_frame_count}
+detection_history = {}
+previous_depth_map = None
+last_detections = []
+last_depth = None
 
 
 def normalize_depth_map(depth):
@@ -176,12 +201,24 @@ def get_depth_map_edge_based(frame):
     return depth
 
 
+def get_detection_key(det):
+    """Generate a unique key for a detection based on label and approximate location."""
+    x1, y1, x2, y2 = det['box']
+    # Quantize box to reduce sensitivity to small movements
+    cx, cy = (x1 + x2) // 2 // 50, (y1 + y2) // 2 // 50
+    return f"{det['label']}_{cx}_{cy}"
+
+
 def process_frame_worker():
     """
     Background thread: continuously process frames from the queue.
-    Performs YOLO detection and depth estimation.
+    Performs YOLO detection and depth estimation only on selected frames.
+    Reuses previous results for intermediate frames.
     """
-    global frame_count, current_stats
+    global frame_count, current_stats, processed_frame_count
+    global detection_history, previous_depth_map, last_detections, last_depth
+    
+    last_process_time = time.time()
     
     while True:
         try:
@@ -193,50 +230,104 @@ def process_frame_worker():
             break
         
         h, w = frame.shape[:2]
-        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Compute depth map
-        if midas_available:
+        # Decide whether to run YOLO and/or MiDaS on this frame
+        should_run_yolo = (frame_id % YOLO_EVERY_N_FRAMES == 0)
+        should_run_midas = (frame_id % MIDAS_EVERY_N_FRAMES == 0)
+        
+        # Compute depth map (MiDaS runs less frequently, cached between runs)
+        if should_run_midas and USE_MIDAS and midas_available:
+            img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             depth = get_depth_map_midas(frame, img_rgb)
+            
+            # Temporal depth smoothing
+            if previous_depth_map is not None and depth.shape == previous_depth_map.shape:
+                depth = (TEMPORAL_DEPTH_SMOOTHING * previous_depth_map + 
+                         (1 - TEMPORAL_DEPTH_SMOOTHING) * depth)
+            previous_depth_map = depth.copy()
+            last_depth = depth
+        elif last_depth is not None and last_depth.shape[:2] == (h, w):
+            # Reuse cached depth map
+            depth = last_depth
         else:
-            depth = get_depth_map_edge_based(frame)
+            # Fallback: edge-based or zeros
+            if not USE_MIDAS:
+                depth = get_depth_map_edge_based(frame)
+            else:
+                depth = np.zeros((h, w), dtype=np.float32)
+            last_depth = depth
         
-        # YOLO detection
-        results = yolo(frame, size=640)
-        df = results.pandas().xyxy[0]
+        # YOLO detection (runs every frame for low latency)
+        if should_run_yolo:
+            results = yolo(frame, size=INFERENCE_SIZE)
+            df = results.pandas().xyxy[0]
+            processed_frame_count += 1
+        else:
+            df = None  # Skip YOLO parsing
         
         # Process detections
         detections = []
         vis = frame.copy()
         
-        for _, row in df.iterrows():
-            x1, y1, x2, y2 = map(int, [row.xmin, row.ymin, row.xmax, row.ymax])
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(w, x2), min(h, y2)
+        if should_run_yolo and df is not None:
+            # Full processing: run detection pipeline
+            for _, row in df.iterrows():
+                x1, y1, x2, y2 = map(int, [row.xmin, row.ymin, row.xmax, row.ymax])
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w, x2), min(h, y2)
+                
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                
+                roi = depth[y1:y2, x1:x2]
+                if roi.size == 0:
+                    continue
+                
+                median_depth = np.nanmedian(roi)
+                if not np.isfinite(median_depth):
+                    continue
+                
+                label = str(row["name"])
+                if label not in ALLOWED_CLASSES:
+                    continue
+                confidence = float(row["confidence"])
+                
+                detections.append({
+                    'label': label,
+                    'depth': median_depth,
+                    'box': (x1, y1, x2, y2),
+                    'confidence': confidence
+                })
             
-            if x2 <= x1 or y2 <= y1:
-                continue
+            # Update detection persistence tracking
+            current_keys = set()
+            for det in detections:
+                key = get_detection_key(det)
+                current_keys.add(key)
+                detection_history[key] = detection_history.get(key, 0) + 1
             
-            roi = depth[y1:y2, x1:x2]
-            if roi.size == 0:
-                continue
+            # Decay/remove detections not seen this frame
+            keys_to_remove = [k for k in detection_history if k not in current_keys]
+            for k in keys_to_remove:
+                del detection_history[k]
             
-            median_depth = np.nanmedian(roi)
-            if not np.isfinite(median_depth):
-                continue
+            # Mark stable detections (persisted across threshold frames)
+            for det in detections:
+                key = get_detection_key(det)
+                det['stable'] = detection_history.get(key, 0) >= DETECTION_PERSISTENCE_THRESHOLD
             
-            label = str(row["name"])
-            confidence = float(row["confidence"])
-            
-            detections.append({
-                'label': label,
-                'depth': median_depth,
-                'box': (x1, y1, x2, y2),
-                'confidence': confidence
-            })
+            # Cache results for intermediate frames
+            last_detections = detections
+            last_depth = depth
+        else:
+            # Reuse cached detections from last processed frame
+            detections = last_detections
         
         # Sort by depth (farthest first)
         detections = sorted(detections, key=lambda x: x['depth'], reverse=True)
+        
+        # Count stable detections for stats
+        stable_count = sum(1 for d in detections if d.get('stable', False))
         
         # Draw detections on frame
         for det in detections:
@@ -267,8 +358,8 @@ def process_frame_worker():
         
         # Add stats to frame
         depth_method = "MiDaS" if midas_available else "Edge-based"
-        status_text = "{} detections | {} | {:.1f} FPS".format(
-            len(detections), depth_method, current_stats['fps']
+        status_text = "{} det ({} stable) | {} | {:.1f} FPS".format(
+            len(detections), stable_count, depth_method, current_stats['processed_fps']
         )
         cv2.putText(
             vis, status_text, (10, 25),
@@ -277,6 +368,7 @@ def process_frame_worker():
         
         # Update stats
         current_stats['detections'] = len(detections)
+        current_stats['stable_detections'] = stable_count
         current_stats['uptime'] = int(time.time() - start_time)
         current_stats['total_frames'] = frame_id
         
@@ -297,7 +389,7 @@ def generate_frames():
     """
     Generator function that yields JPEG frames for streaming.
     """
-    global current_frame, fps_counter, fps_time, current_stats
+    global current_frame, fps_counter, fps_time, current_stats, processed_frame_count
     
     while True:
         if current_frame is None:
@@ -313,12 +405,14 @@ def generate_frames():
                b'Content-Length: ' + str(len(frame_data)).encode() + b'\r\n\r\n' + 
                frame_data + b'\r\n')
         
-        # Update FPS counter
+        # Update FPS counters
         fps_counter += 1
         if time.time() - fps_time > 1.0:
             current_stats['fps'] = fps_counter
+            current_stats['processed_fps'] = processed_frame_count
             fps_time = time.time()
             fps_counter = 0
+            processed_frame_count = 0
         
         time.sleep(0.01)
 
@@ -356,9 +450,11 @@ def main_capture_worker():
                 print("Failed to grab frame")
                 break
             
-            # Send frame to processing queue if not paused
+            # Send latest frame to processing queue if not paused (drop stale frames)
             if not is_paused:
                 try:
+                    while not frame_queue.empty():
+                        frame_queue.get_nowait()
                     frame_queue.put_nowait((frame_id, frame, time.time()))
                 except:
                     pass
