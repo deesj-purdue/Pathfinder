@@ -7,9 +7,9 @@ Pathfinder is a chest-mounted camera and sensor system that can detect obstacles
 
 The `main` branch is for any code needing to be shared between the Raspberry Pi 5 and the ESP32, such as communication API's.
 
-The `esp/*` branch prefix is for any code specific to the ESP 32. E.g., `esp/main` is the main branch for the ESP32.
+The `esp/*` branch prefix is for any code specific to the ESP32. E.g., `esp/main` is the main branch for the ESP32.
 
-The `rp/*` branch prefix is for any code specific to the Raspberry Pi 5. E.g., `rp/main` is the main branch for the RP5.
+The `rp/*` branch prefix is for any code specific to the RP5. E.g., `rp/main` is the main branch for the RP5.
 
 An example branch would be `rp/jackson-lidar`, which we could then merge into `rp/main` when it is done developing, it should NOT be merged into `main`. 
 
