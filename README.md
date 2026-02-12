@@ -5,10 +5,13 @@ Pathfinder is a chest-mounted camera and sensor system that can detect obstacles
 
 # Git repo setup
 
-The `main` branch is for any code needing to be shared between the Jetson Nano and the ESP 32, such as communication API's.
+The `main` branch is for any code needing to be shared between the Raspberry Pi 5 and the ESP32, such as communication API's.
 
-The `esp` branch is for any code specific to the ESP 32.
+The `esp/*` branch prefix is for any code specific to the ESP 32. E.g., `esp/main` is the main branch for the ESP32.
 
-The `jn` branch is for any code specific to the Jetson Nano.
+The `rp/*` branch prefix is for any code specific to the Raspberry Pi 5. E.g., `rp/main` is the main branch for the RP5.
 
-Any sub-feature development branches should be prefixed with the branch you are working on, e.g. `esp-jackson-lidar`. Then, when searching for specific sub-branches, the command `git branch --list "esp*"` can be used to see only the branches for that component.
+An example branch would be `rp/jackson-lidar`, which we could then merge into `rp/main` when it is done developing, it should NOT be merged into `main`. 
+
+When searching for specific branch prefixes, the command `git branch --list "esp/*"` can be used to see only the branches for that component.
+
