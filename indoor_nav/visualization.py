@@ -64,10 +64,11 @@ def draw_yolo_boxes(frame, yolo_results, yolo_obstacles):
                     FONT, 0.42, color, 1, cv2.LINE_AA)
 
 
-def draw_depth_overlay(frame, depth_map, alpha=0.25):
-    """Blend MiDaS depth colormap onto the frame."""
+def draw_depth_overlay(frame, depth_map, alpha=0.15):
+    """Blend MiDaS depth colormap onto the frame (optional, low alpha)."""
     if depth_map is None:
         return
+    # Only overlay if we have valid depth data
     d_norm = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     d_color = cv2.applyColorMap(d_norm, cv2.COLORMAP_MAGMA)
     cv2.addWeighted(d_color, alpha, frame, 1 - alpha, 0, dst=frame)

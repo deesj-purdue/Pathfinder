@@ -40,10 +40,10 @@ class LidarData:
 
 def get_haptic_zones(lidar_data, max_distance=3000.0, full_blast_threshold=1500.0):
     """
-    Extract haptic vibration values from LIDAR data for a wearable device.
+    Extract haptic motor values from LIDAR data for a wearable device.
     
     Divides the 120-degree front field of view into 3 equal 40-degree zones
-    (left, center, right) and returns normalized vibration intensities for each.
+    (left, center, right) and returns normalized motor intensities (0-100) for each.
     
     Args:
         lidar_data (LidarData): LIDAR scan data object
@@ -52,9 +52,9 @@ def get_haptic_zones(lidar_data, max_distance=3000.0, full_blast_threshold=1500.
     
     Returns:
         dict: {
-            'left': vibration intensity (0.0-1.0),
-            'center': vibration intensity (0.0-1.0),
-            'right': vibration intensity (0.0-1.0),
+            'left': motor intensity (0-100 int),
+            'center': motor intensity (0-100 int),
+            'right': motor intensity (0-100 int),
             'left_distance': closest distance in left zone (mm) or None,
             'center_distance': closest distance in center zone (mm) or None,
             'right_distance': closest distance in right zone (mm) or None
@@ -65,9 +65,9 @@ def get_haptic_zones(lidar_data, max_distance=3000.0, full_blast_threshold=1500.
         - Center: 340-20 degrees (40 degree span, wraps around 0)
         - Right: 20-60 degrees (40 degree span)
     
-    Vibration formula (quadratic ramp):
+    Vibration formula (quadratic ramp mapped to 0-100):
         x = clamp((max_distance - distance) / (max_distance - full_blast_threshold), 0, 1)
-        vibration = x^2
+        vibration = x^2 * 100
     """
     
     def normalize_angle(angle):
@@ -85,10 +85,10 @@ def get_haptic_zones(lidar_data, max_distance=3000.0, full_blast_threshold=1500.
         else:  # Range wraps around 360
             return angle >= start or angle <= end
     
-    def distance_to_vibration(distance_mm, max_dist, threshold):
-        """Convert distance in mm to vibration intensity (0-1) using quadratic ramp."""
+    def distance_to_motor_value(distance_mm, max_dist, threshold):
+        """Convert distance in mm to motor value (0-100 int) using quadratic ramp."""
         if distance_mm is None:
-            return 0.0
+            return 0
         
         distance_m = distance_mm / 1000.0
         max_dist_m = max_distance / 1000.0
@@ -98,9 +98,9 @@ def get_haptic_zones(lidar_data, max_distance=3000.0, full_blast_threshold=1500.
         x = (max_dist_m - distance_m) / (max_dist_m - threshold_m)
         x = max(0.0, min(1.0, x))
         
-        # Apply quadratic function
-        vibration = x ** 2
-        return vibration
+        # Apply quadratic function and scale to 0-100
+        motor_value = x ** 2 * 100
+        return int(motor_value)
     
     # Define the three 40-degree zones
     zones = {
@@ -119,9 +119,9 @@ def get_haptic_zones(lidar_data, max_distance=3000.0, full_blast_threshold=1500.
                 if closest_distance is None or distance < closest_distance:
                     closest_distance = distance
         
-        # Convert to vibration intensity
-        vibration = distance_to_vibration(closest_distance, max_distance, full_blast_threshold)
-        result[zone_name] = vibration
+        # Convert to motor value (0-100 int)
+        motor_value = distance_to_motor_value(closest_distance, max_distance, full_blast_threshold)
+        result[zone_name] = motor_value
         result[f'{zone_name}_distance'] = closest_distance
     
     return result
